@@ -10,7 +10,7 @@
 ;; Last-Updated: 2010-05-22 21:21:04
 ;;           By: Mickey Petersen
 ;; Keywords: python utility refactor extras
-;; Compatibility: GNU Emacs 23.1.94.1
+;; Compatibility: GNU Emacs 23
 ;;
 ;; Features that might be required by this library:
 ;;
@@ -73,11 +73,13 @@
 ;;
 ;; In inferior python mode:
 ;; 
-;; C-c C-d - Sends a dir(EXPR) command where EXPR is the expression at
-;; point. It will preserve your current input.
+;; C-c C-d - Invokes `python-mp-send-dir'. Sends a dir(EXPR) command
+;; where EXPR is the expression at point. It will preserve your
+;; current input.
 ;;
-;; C-d C-h - Sends a help(EXPR command where EXPR is the expressio nat
-;; point. It will also preserve your current input.
+;; C-d C-h - Invokes `python-mp-send-help'. Sends a help(EXPR) command
+;; where EXPR is the expressio nat point. It will also preserve your
+;; current input.
 ;;
 ;;; Installation:
 ;;
@@ -90,6 +92,9 @@
 ;; 
 
 ;;; Change log:
+;;
+;; 2010/06/02
+;;      * Clarified the documentation and comments.
 ;;
 ;; 2010/05/24
 ;;      * Added typical Emacs GPL header.
@@ -232,9 +237,10 @@ If called from within a class -- but outside a method body -- an error is raised
   (save-excursion
     (save-restriction
       (widen)
-      ;; point is now at the beginning of defun. FIXME: This would
-      ;; obviously fail in `python-mode.el'. There's no function by
-      ;; that name there as far as i know.
+      ;; point is now at the beginning of defun.
+      ;;
+      ;; FIXME: This would obviously fail in `python-mode.el'. There's
+      ;; no function by that name there as far as i know.
       (python-beginning-of-defun)
       ;; only defs can have parameters.
       (if (not (looking-at python-mp-def-regexp))
