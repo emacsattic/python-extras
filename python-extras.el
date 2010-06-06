@@ -37,15 +37,15 @@
 ;; the Free Software Foundation, Inc., 51 Franklin Street, Fifth
 ;; Floor, Boston, MA 02110-1301, USA.
 
-;;; Commentary: 
-;; 
+;;; Commentary:
+;;
 ;; Random grab bag of extras for \\[python-mode] and
 ;; \\[inferior-python-mode].
-;; 
+;;
 ;; This package was made to improve Emacs' existing python mode,
 ;; `python.el'.  Unlike packages like ropemacs this module does not have
 ;; any mandatory external dependencies.
-;; 
+;;
 ;;
 ;; Several different helper functions were added to:
 ;;
@@ -72,7 +72,7 @@
 ;;
 ;;
 ;; In inferior python mode:
-;; 
+;;
 ;; C-c C-d - Invokes `python-mp-send-dir'. Sends a dir(EXPR) command
 ;; where EXPR is the expression at point. It will preserve your
 ;; current input.
@@ -89,7 +89,7 @@
 ;;
 ;; (require 'python-extras)
 ;;
-;; 
+;;
 
 ;;; Change log:
 ;;
@@ -98,16 +98,16 @@
 ;;
 ;; 2010/05/24
 ;;      * Added typical Emacs GPL header.
-;;      
+;;
 ;;      * Introduced the first (of many?) font-lock additions to
 ;;        inferior python mode.
-;;        
+;;
 ;; 2010/05/22
 ;;      * Added `python-mp-send-help-at-pt'
-;;      
+;;
 ;; 2010/05/21
 ;;      * Begun work.
-;; 
+;;
 
 ;;; TODO
 ;;
@@ -139,10 +139,22 @@
 
 
 ;;; Keymaps
+
 (define-key python-mode-map (kbd "C-c C-s") 'python-mp-send-and-switch)
 (define-key python-mode-map (kbd "C-c C-p") 'python-mp-add-parameter)
+
+;; this really should be the default keybinding in Python.
 (define-key python-mode-map (kbd "C-m") 'newline-and-indent)
 
+;; smart quote functionality
+;; (define-key python-mode-map ?\" 'python-mp-smart-quote)
+;; (define-key python-mode-map ?\' 'python-mp-smart-quote)
+
+;; region shifting
+(define-key python-mode-map (kbd "C-S-<up>") 'python-mp-shift-region-up)
+(define-key python-mode-map (kbd "C-S-<down>") 'python-mp-shift-region-down)
+
+;;; Keymaps for inferior python
 (define-key inferior-python-mode-map (kbd "C-c C-h") 'python-mp-send-help)
 (define-key inferior-python-mode-map (kbd "C-c C-d") 'python-mp-send-dir)
 
@@ -150,15 +162,15 @@
   "Sends a help(EXPR) command when called from an inferior python
 buffer, where EXPR is an expression at Point."
   (interactive (if (eq major-mode 'inferior-python-mode)
-                   (python-mp-compile-comint-query "help" (python-mp-get-word-at-pt)))))
+                   (python-mp-compile-comint-query "help" (python-mp-get-expression-at-pt)))))
 
 (defun python-mp-send-dir ()
   "Sends a dir(EXPR) command when called from an inferior python
 buffer, where EXPR is an expression at Point."
   (interactive (if (eq major-mode 'inferior-python-mode)
-                   (python-mp-compile-comint-query "dir" (python-mp-get-word-at-pt)))))
+                   (python-mp-compile-comint-query "dir" (python-mp-get-expression-at-pt)))))
 
-(defun python-mp-get-word-at-pt ()
+(defun python-mp-get-expression-at-pt ()
   "Takes the word at point using a modified syntax table and
 returns it."
   ;; we need a quick-and-dirty syntax table hack here to make
@@ -200,10 +212,26 @@ already declared, the existing \"from IMPORT\" clause is updated
 with IDENTIFIER."
   (error "NYI"))
 
-(defun python-mp-extract-to-constant ()
-  "Not Yet Implemented. Extracts the expression at point as a constant locally to the
-class (if any) or globally otherwise."
-  (error "NYI"))
+(defun python-mp-stringp (pt)
+  "Return t if PT is in a Python string.
+
+Uses `parse-partial-sexp' to infer the context of point."
+  ;; Are there cases where point could be in a string but without a
+  ;; string symbol?
+    (eq 'string (syntax-ppss-context (syntax-ppss pt))))
+
+(defun python-mp-extract-to-constant (&optional arg)
+  "Extracts the expression at point as a constant. If point is in
+a class then the constant is declared as a class field. If point
+is not in a class it is extracted as a global constant. If
+numerical ARG is set then it is made global regardless."
+  (if (python-mp-stringp (point))
+      (progn
+        (save-excursion
+          (python-beginning-of-string)
+          (python-beginning-of-defun)
+          (setq constant-name (read-string "Constant Name: "))
+          ))))
 
 (defun python-mp-send-func (func arg)
   "Constructs a FUNC(ARG) request to an inferior-python process and
@@ -225,8 +253,7 @@ sends it without interrupting user input"
         (error "No process found"))))
 
 (defconst python-mp-def-regexp (rx bol (0+ (any space)) "def")
-  "Regular expression `python-mp-add-parameter' uses to match a
-function definition")
+  "Regular expression `python-mp-add-parameter' uses to match a function definition")
 
 (defun python-mp-add-parameter (param)
   "Appends a parameter to the Python function point belongs to.
@@ -281,19 +308,68 @@ If called from within a class -- but outside a method body -- an error is raised
 
 ; Sends the contents of the buffer then switches to the python buffer.
 (defun python-mp-send-and-switch ()
-  "Sends the current buffer to Python but only after moving point to the end of the buffer. After that it switches to the Python buffer. "
+  "Sends the current buffer to Python but only after moving point
+to the end of the buffer. After that it switches back to the
+inferior python buffer."
   (interactive)
   (let ((currshell python-buffer)
 	(currbuffer (buffer-name)))
     ;; switch to python so we can jump to end-of-buffer.
     (with-selected-window (selected-window)
       (python-switch-to-python currshell)
-      (end-of-buffer))
+      (goto-char (point-max)))
     ;; we're back in the python buffer. send the output then switch
     ;; back to the shell again
     (python-send-buffer)
     (python-switch-to-python currshell)
     (message (concat "Sent python buffer " currbuffer  " at " (current-time-string)))))
+
+(defun python-mp-smart-quote ()
+  "Inserts another pair of quotes -- either single or double -- if point is on a quote symbol."
+  (error "NYI")
+  )
+
+(defun python-mp-shift-region (arg)
+  "Shifts the active region ARG times up (backward if ARG is
+negative) and reindents the code according to the indentation
+depth in that block. "
+  ;;; Code loosely based off code snarfed from Andreas Politz on
+  ;;; `gnu.emacs.help'.
+  (if (region-active-p)
+      (progn
+        (if (> (point) (mark))
+            (exchange-point-and-mark))
+        (let ((column (current-column))
+              (text (delete-and-extract-region (point) (mark))))
+          (forward-line arg)
+          (move-to-column column t)
+          (set-mark (point))
+          (insert text)
+          (exchange-point-and-mark)
+          (setq deactivate-mark nil)))
+    (error "Region shifting only works when transient-mark-mode is enabled.")))
+
+(defun python-mp-shift-region-down (arg)
+  "If the region is active and \\[transient-mark-mode] is enabled
+the region will be shifted down ARG times and reindented."
+  (interactive "*p")
+  (python-mp-shift-region arg))
+
+(defun python-mp-shift-region-up (arg)
+  "If the region is active and \\[transient-mark-mode] is enabled
+the region will be shifted up ARG times and reindented."
+  (interactive "*p")
+  (python-mp-shift-region (- arg)))
+
+(defun python-mp-shift-region (arg)
+
+  (when (region-active-p)
+    (if (> (point) (mark))
+        (exchange-point-and-mark))
+    )
+  )
+
+
 
 ;;; inferior-python-mode
 
