@@ -2,8 +2,8 @@
 
 ;; Filename: python-extras.el
 ;; Description: Extras for python-mode
-;; Author: Mickey Petersen <mickey@fyeah.org>
-;; Maintainer: Mickey Petersen <mickey@fyeah.org>
+;; Author: Mickey Petersen (rot13 "zvpxrl@slrnu.bet")
+;; Maintainer: Mickey Petersen
 ;; Copyright (C) 2010, Mickey Petersen, all rights reserved.
 ;; Created: 2010-05-22 21:21:04
 ;; Version: 0.1
