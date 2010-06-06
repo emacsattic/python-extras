@@ -6,7 +6,7 @@
 ;; Maintainer: Mickey Petersen
 ;; Copyright (C) 2010, Mickey Petersen, all rights reserved.
 ;; Created: 2010-05-22 21:21:04
-;; Version: 0.1
+;; Version: 0.2
 ;; Last-Updated: 2010-05-22 21:21:04
 ;;           By: Mickey Petersen
 ;; Keywords: python utility refactor extras
@@ -73,6 +73,10 @@
 ;;
 ;; <RET> - Now rebound to `newline-and-indent' -- as it should be.
 ;;
+;; C-S-<up>/<down> - Shifts a region up/down intelligently,
+;; reindenting as necessary.
+;;
+;;
 ;;
 ;; In inferior python mode:
 ;;
@@ -83,6 +87,10 @@
 ;; C-d C-h - Invokes `python-mp-send-help'. Sends a help(EXPR) command
 ;; where EXPR is the expressio nat point. It will also preserve your
 ;; current input.
+;;
+;; Highlighting - Strings are now highlighted using a special "safety"
+;; font locker to prevent the colors from 'bleeding'.
+;;
 ;;
 ;;; Installation:
 ;;
@@ -95,6 +103,12 @@
 ;;
 
 ;;; Change log:
+;;
+;;
+;;
+;; 2010/06/06
+;;      * Added `python-mp-shift-region-up/down'. Regions can
+;;        now be moved around with C-S-<up> and C-S-<down>.
 ;;
 ;; 2010/06/02
 ;;      * Clarified the documentation and comments.
@@ -223,18 +237,18 @@ Uses `parse-partial-sexp' to infer the context of point."
   ;; string symbol?
     (eq 'string (syntax-ppss-context (syntax-ppss pt))))
 
-(defun python-mp-extract-to-constant (&optional arg)
-  "Extracts the expression at point as a constant. If point is in
-a class then the constant is declared as a class field. If point
-is not in a class it is extracted as a global constant. If
-numerical ARG is set then it is made global regardless."
-  (if (python-mp-stringp (point))
-      (progn
-        (save-excursion
-          (python-beginning-of-string)
-          (python-beginning-of-defun)
-          (setq constant-name (read-string "Constant Name: "))
-          ))))
+;; (defun python-mp-extract-to-constant (&optional arg)
+;;   "Extracts the expression at point as a constant. If point is in
+;; a class then the constant is declared as a class field. If point
+;; is not in a class it is extracted as a global constant. If
+;; numerical ARG is set then it is made global regardless."
+;;   (if (python-mp-stringp (point))
+;;       (progn
+;;         (save-excursion
+;;           (python-beginning-of-string)
+;;           (python-beginning-of-defun)
+;;           (setq constant-name (read-string "Constant Name: "))
+;;           ))))
 
 (defun python-mp-send-func (func arg)
   "Constructs a FUNC(ARG) request to an inferior-python process and
@@ -379,6 +393,10 @@ depth in that block if SUBR is `'smart'. "
             (exchange-point-and-mark))
         (let ((column (current-column))
               (text (delete-and-extract-region (point) (mark))))
+          ;; FIXME: this sorta breaks the undo ring if you shift a
+          ;; region and then immediately `undo'. This needs to be
+          ;; fixed. The workaround is to do something to add to the
+          ;; undo-ring (like movement) then it'll work fine.
           (forward-line arg)
           (move-to-column column t)
           (set-mark (point))
