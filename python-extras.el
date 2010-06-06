@@ -57,6 +57,9 @@
 ;;
 ;;  * Add basic syntax highlighting to inferior python.
 ;;
+;;  * Shift regions of code around and reindents according to the
+;;    indentation depth of that block
+;;
 ;;
 ;;; How to use
 ;;
@@ -329,7 +332,37 @@ inferior python buffer."
   (error "NYI")
   )
 
-(defun python-mp-shift-region (arg)
+
+(defun python-mp-indentation-at-point (pt)
+  "Determines the indentation at PT. This approach does not use
+\\[python-mode]'s internal data structures as we're not
+interested in the *possible* indentation levels but merely what
+PT currently has.
+
+If the line contains nothing but whitespace (as determined by the
+syntax table) then and `indent-count' is 0 we recursively
+backtrack one line at a time until that condition is no longer
+satisfied."
+  (save-excursion
+    (unless (bobp)
+      (goto-char pt)
+      (beginning-of-line)
+      (setq indent-count (- (progn
+           ;; `line-end-position' seems like the best way to limit the
+           ;; search; but is it enough?
+           (skip-syntax-forward " " (line-end-position))
+           (point))
+         (point-at-bol)))
+      ;; can `indent-count' ever be less than 0?  make sure we're eolp
+      ;; also or we run into the nasty situation where `indent-count'
+      ;; is 0 but without an empty line.
+      (if (and (= indent-count 0) (eolp))
+          (progn
+            (forward-line -1)
+            (python-mp-indentation-at-point (point)))
+        indent-count))))
+
+(defun python-mp-shift-region (arg subr)
   "Shifts the active region ARG times up (backward if ARG is
 negative) and reindents the code according to the indentation
 depth in that block. "
@@ -337,6 +370,9 @@ depth in that block. "
   ;;; `gnu.emacs.help'.
   (if (region-active-p)
       (progn
+        ;; (if (or (and (bobp) (< arg 0))
+        ;;         (and (eobp) (< arg 0)))
+        ;;     (error "Cannot shift region the further."))
         (if (> (point) (mark))
             (exchange-point-and-mark))
         (let ((column (current-column))
@@ -345,7 +381,10 @@ depth in that block. "
           (move-to-column column t)
           (set-mark (point))
           (insert text)
+          ;; post-move stuff here.
           (exchange-point-and-mark)
+          (if (eq subr 'smart)
+              (indent-region (point) (mark) (python-mp-indentation-at-point (mark))))          
           (setq deactivate-mark nil)))
     (error "Region shifting only works when transient-mark-mode is enabled.")))
 
@@ -353,13 +392,13 @@ depth in that block. "
   "If the region is active and \\[transient-mark-mode] is enabled
 the region will be shifted down ARG times and reindented."
   (interactive "*p")
-  (python-mp-shift-region arg))
+  (python-mp-shift-region arg 'smart))
 
 (defun python-mp-shift-region-up (arg)
   "If the region is active and \\[transient-mark-mode] is enabled
 the region will be shifted up ARG times and reindented."
   (interactive "*p")
-  (python-mp-shift-region (- arg)))
+  (python-mp-shift-region (- arg) 'smart))
 
 ;;; inferior-python-mode
 
