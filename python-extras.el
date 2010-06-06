@@ -361,16 +361,6 @@ the region will be shifted up ARG times and reindented."
   (interactive "*p")
   (python-mp-shift-region (- arg)))
 
-(defun python-mp-shift-region (arg)
-
-  (when (region-active-p)
-    (if (> (point) (mark))
-        (exchange-point-and-mark))
-    )
-  )
-
-
-
 ;;; inferior-python-mode
 
 ;; `python-mode' enhancements.
