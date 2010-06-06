@@ -347,15 +347,17 @@ satisfied."
     (unless (bobp)
       (goto-char pt)
       (beginning-of-line)
-      (setq indent-count (- (progn
-           ;; `line-end-position' seems like the best way to limit the
-           ;; search; but is it enough?
-           (skip-syntax-forward " " (line-end-position))
-           (point))
-         (point-at-bol)))
-      ;; can `indent-count' ever be less than 0?  make sure we're eolp
-      ;; also or we run into the nasty situation where `indent-count'
-      ;; is 0 but without an empty line.
+      (setq indent-count
+            (- (progn
+                 ;; `line-end-position' seems like the best way to limit the
+                 ;; search; but is it enough?
+                 (skip-syntax-forward " " (line-end-position))
+                 (point))
+               (point-at-bol)))
+      ;; FIXME: can `indent-count' ever be less than 0?
+      ;;
+      ;; make sure we're eolp also or we run into the nasty situation
+      ;; where `indent-count' is 0 and yet the line contains code.
       (if (and (= indent-count 0) (eolp))
           (progn
             (forward-line -1)
@@ -365,7 +367,7 @@ satisfied."
 (defun python-mp-shift-region (arg subr)
   "Shifts the active region ARG times up (backward if ARG is
 negative) and reindents the code according to the indentation
-depth in that block. "
+depth in that block if SUBR is `'smart'. "
   ;;; Code loosely based off code snarfed from Andreas Politz on
   ;;; `gnu.emacs.help'.
   (if (region-active-p)
@@ -384,7 +386,11 @@ depth in that block. "
           ;; post-move stuff here.
           (exchange-point-and-mark)
           (if (eq subr 'smart)
-              (indent-region (point) (mark) (python-mp-indentation-at-point (mark))))          
+              (progn
+                (indent-rigidly (point) (mark)
+                                (-
+                                 (python-mp-indentation-at-point (mark))
+                                 (python-mp-indentation-at-point (point))))))
           (setq deactivate-mark nil)))
     (error "Region shifting only works when transient-mark-mode is enabled.")))
 
