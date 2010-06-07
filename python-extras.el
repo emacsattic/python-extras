@@ -401,13 +401,13 @@ depth in that block if SUBR is `'smart'. "
           (move-to-column column t)
           (set-mark (point))
           (insert text)
-          ;; post-move stuff here.
+          ;; without this point would be at the end of the region
           (exchange-point-and-mark)
           (if (eq subr 'smart)
               (progn
                 (indent-rigidly (point) (mark)
                                 (-
-                                 (python-mp-indentation-at-point (mark))
+                                 (python-calculate-indentation)
                                  (python-mp-indentation-at-point (point))))))
           (setq deactivate-mark nil)))
     (error "Region shifting only works when transient-mark-mode is enabled.")))
