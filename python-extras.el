@@ -237,37 +237,40 @@ Uses `parse-partial-sexp' to infer the context of point."
   ;; string symbol?
     (eq 'string (syntax-ppss-context (syntax-ppss pt))))
 
-;; (defun python-mp-extract-to-constant (&optional arg)
-;;   "Extracts the expression at point as a constant. If point is in
-;; a class then the constant is declared as a class field. If point
-;; is not in a class it is extracted as a global constant. If
-;; numerical ARG is set then it is made global regardless."
-;;   (if (python-mp-stringp (point))
-;;       (progn
-;;         (save-excursion
-;;           (python-beginning-of-string)
-;;           (python-beginning-of-defun)
-;;           (setq constant-name (read-string "Constant Name: "))
-;;           ))))
+(defun python-mp-extract-to-constant (name &optional arg)
+  "Extracts the expression at point as a constant, NAME. If point is in
+a class then the constant is declared as a class field. If point
+is not in a class it is extracted as a global constant. If
+numerical ARG is set then it is made global regardless."
+  (interactive "*sConstant Name:")
+  (if (python-mp-stringp (point))
+      (progn
+        (save-excursion
+          (python-beginning-of-string)
+          (let ((constant
+                 (delete-and-extract-region
+                  (point) (save-excursion (forward-sexp) (point)))))
+            )))))
+
 
 (defun python-mp-send-func (func arg)
   "Constructs a FUNC(ARG) request to an inferior-python process and
 sends it without interrupting user input"
   (let ((proc (get-buffer-process (current-buffer))))
-      (if proc
-          (progn
-            ;; construct a query for `python-shell' of the form 'func(arg)'.
-            ;; FIXME: better way?
-            (comint-send-string proc (concat func "(" arg ")" "\n"))
-            ;; count the number of lines left between `point' and
-            ;; `window-end'. If it this number is 0 or 1 we're at the
-            ;; last line and thus we shouldn't move the point to the
-            ;; very end, as the user invoked the command on
-            ;; a line they're still editing.
-            )
-        (if (> (count-lines (point) (window-end)) 1)
-            (goto-char (point-max)))
-        (error "No process found"))))
+    (if proc
+        (progn
+          ;; construct a query for `python-shell' of the form 'func(arg)'.
+          ;; FIXME: better way?
+          (comint-send-string proc (concat func "(" arg ")" "\n"))
+          ;; count the number of lines left between `point' and
+          ;; `window-end'. If it this number is 0 or 1 we're at the
+          ;; last line and thus we shouldn't move the point to the
+          ;; very end, as the user invoked the command on
+          ;; a line they're still editing.
+          )
+      (if (> (count-lines (point) (window-end)) 1)
+          (goto-char (point-max)))
+      (error "No process found"))))
 
 (defconst python-mp-def-regexp (rx bol (0+ (any space)) "def")
   "Regular expression `python-mp-add-parameter' uses to match a function definition")
@@ -363,8 +366,8 @@ satisfied."
       (beginning-of-line)
       (setq indent-count
             (- (progn
-                 ;; `line-end-position' seems like the best way to limit the
-                 ;; search; but is it enough?
+                 ;; `line-end-position' seems like the best way to
+                 ;; limit the search; but is it enough?
                  (skip-syntax-forward " " (line-end-position))
                  (point))
                (point-at-bol)))
@@ -405,7 +408,9 @@ depth in that block if SUBR is `'smart'. "
           (exchange-point-and-mark)
           (if (eq subr 'smart)
               (progn
-                (indent-rigidly (point) (mark) (- (caar (last (python-indentation-levels))) (python-mp-indentation-at-point (point)))))
+                (indent-rigidly (point) (mark)
+                                (- (caar (last (python-indentation-levels)))
+                                   (python-mp-indentation-at-point (point))))))
           (setq deactivate-mark nil)))
     (error "Region shifting only works when transient-mark-mode is enabled.")))
 
