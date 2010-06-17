@@ -387,32 +387,33 @@ negative) and reindents the code according to the indentation
 depth in that block if SUBR is `'smart'. "
   ;;; Code loosely based off code snarfed from Andreas Politz on
   ;;; `gnu.emacs.help'.
-  (if (region-active-p)
-      (progn
-        ;; (if (or (and (bobp) (< arg 0))
-        ;;         (and (eobp) (< arg 0)))
-        ;;     (error "Cannot shift region the further."))
-        (if (> (point) (mark))
-            (exchange-point-and-mark))
-        (let ((column (current-column))
-              (text (delete-and-extract-region (point) (mark))))
-          ;; FIXME: this sorta breaks the undo ring if you shift a
-          ;; region and then immediately `undo'. This needs to be
-          ;; fixed. The workaround is to do something to add to the
-          ;; undo-ring (like movement) then it'll work fine.
-          (forward-line arg)
-          (move-to-column column t)
-          (set-mark (point))
-          (insert text)
-          ;; without this point would be at the end of the region
-          (exchange-point-and-mark)
-          (if (eq subr 'smart)
-              (progn
-                (indent-rigidly (point) (mark)
-                                (- (caar (last (python-indentation-levels)))
-                                   (python-mp-indentation-at-point (point))))))
-          (setq deactivate-mark nil)))
-    (error "Region shifting only works when transient-mark-mode is enabled.")))
+  (progn
+    (if (> (point) (mark))
+        (exchange-point-and-mark))
+    (let ((column (current-column))
+          (text (delete-and-extract-region (point) (mark))))
+      ;; FIXME: this sorta breaks the undo ring if you shift a
+      ;; region and then immediately `undo'. This needs to be
+      ;; fixed. The workaround is to do something to add to the
+      ;; undo-ring (like movement) then it'll work fine.
+      (forward-line arg)
+      (move-to-column column t)
+      (set-mark (point))
+      (insert text)
+      ;; without this point would be at the end of the region
+      (exchange-point-and-mark)
+      (if (eq subr 'smart)
+          (progn
+            (indent-rigidly (point) (mark)
+                            ;;; the inner-most block indentation level
+                            ;;; is what we're after. Subtract the
+                            ;;; current indentation at point (the
+                            ;;; top-most line in the region) from it
+                            ;;; to get the amount we need to rigidly
+                            ;;; indent by.
+                            (- (caar (last (python-indentation-levels)))
+                               (python-mp-indentation-at-point (point))))))
+      (setq deactivate-mark nil))))
 
 (defun python-mp-shift-region-down (arg)
   "If the region is active and \\[transient-mark-mode] is enabled
