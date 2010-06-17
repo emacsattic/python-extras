@@ -405,10 +405,7 @@ depth in that block if SUBR is `'smart'. "
           (exchange-point-and-mark)
           (if (eq subr 'smart)
               (progn
-                (indent-rigidly (point) (mark)
-                                (-
-                                 (python-calculate-indentation)
-                                 (python-mp-indentation-at-point (point))))))
+                (indent-rigidly (point) (mark) (- (caar (last (python-indentation-levels))) (python-mp-indentation-at-point (point)))))
           (setq deactivate-mark nil)))
     (error "Region shifting only works when transient-mark-mode is enabled.")))
 
