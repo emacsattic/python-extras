@@ -237,20 +237,28 @@ Uses `parse-partial-sexp' to infer the context of point."
   ;; string symbol?
     (eq 'string (syntax-ppss-context (syntax-ppss pt))))
 
-(defun python-mp-extract-to-constant (name &optional arg)
-  "Extracts the expression at point as a constant, NAME. If point is in
-a class then the constant is declared as a class field. If point
-is not in a class it is extracted as a global constant. If
-numerical ARG is set then it is made global regardless."
-  (interactive "*sConstant Name:")
-  (if (python-mp-stringp (point))
-      (progn
-        (save-excursion
-          (python-beginning-of-string)
-          (let ((constant
-                 (delete-and-extract-region
-                  (point) (save-excursion (forward-sexp) (point)))))
-            )))))
+(defun python-mp-commentp (pt)
+  "Returns t if PT is in a Python comment."
+  (eq 'comment (syntax-ppss-context (syntax-ppss pt))))
+
+(defun python-mp-extract-dwim ()
+  "Extracts the expression, string or sexp at point and returns
+it."
+  ;; if point is in a string we want to extract all of it.
+  (cond
+   ((python-mp-stringp (point))
+    (save-excursion
+      (python-beginning-of-string)
+      (delete-and-extract-region (point) (save-excursion (forward-sexp) (point)))))
+   ((python-mp-commentp (point))
+    (error "Cannot use Extract Expression in a comment"))
+   (t
+    (let ((bounds (bounds-of-thing-at-point 'sexp)))
+      (if bounds
+          (delete-and-extract-region (car bounds) (cdr bounds))
+        (error "Cannot find a valid expression"))))))
+  
+  
 
 
 (defun python-mp-send-func (func arg)
