@@ -61,24 +61,40 @@
 ;;    indentation depth of that block
 ;;
 ;;
-;;; How to use
+;;;;;; How to use
 ;;
 ;; By default several commands are bound to various 'C-c' keybinds.
 ;;
 ;; In \\[python-mode]:
 ;;
-;; C-c C-p - Calls `python-mp-add-parameter' which will prompt you for
-;; a parameter to add to the function point is currently in. If you
-;; are not in a function body an error is raised.
+;;; Misc
 ;;
 ;; <RET> - Now rebound to `newline-and-indent' -- as it should be.
 ;;
 ;; C-S-<up>/<down> - Shifts a region up/down intelligently,
 ;; reindenting as necessary.
 ;;
+;;;; Refactor
 ;;
+;; C-c C-p - Calls `python-mp-add-parameter' which will prompt you for
+;; a parameter to add to the function point is currently in. If you
+;; are not in a function body an error is raised.
+;;
+;;
+;;; Extract...
+;;
+;; Extracts the string/s-exp/expression at point to the top of the
+;; current...
+;;
+;;   C-c C-e C-b - block
+;;
+;;   C-c C-e C-d - def
+;;
+;;   C-c C-e C-c - class
 ;;
 ;; In inferior python mode:
+;;
+;;; Inferior Python
 ;;
 ;; C-c C-d - Invokes `python-mp-send-dir'. Sends a dir(EXPR) command
 ;; where EXPR is the expression at point. It will preserve your
@@ -158,7 +174,12 @@
 ;;; Keymaps
 
 (define-key python-mode-map (kbd "C-c C-s") 'python-mp-send-and-switch)
+
+;; refactoring
 (define-key python-mode-map (kbd "C-c C-p") 'python-mp-add-parameter)
+(define-key python-mode-map (kbd "C-c C-e C-d") 'python-mp-extract-to-def)
+(define-key python-mode-map (kbd "C-c C-e C-c") 'python-mp-extract-to-class)
+(define-key python-mode-map (kbd "C-c C-e C-b") 'python-mp-extract-to-block)
 
 ;; this really should be the default keybinding in Python.
 (define-key python-mode-map (kbd "C-m") 'newline-and-indent)
@@ -174,6 +195,12 @@
 ;;; Keymaps for inferior python
 (define-key inferior-python-mode-map (kbd "C-c C-h") 'python-mp-send-help)
 (define-key inferior-python-mode-map (kbd "C-c C-d") 'python-mp-send-dir)
+
+(defconst python-mp-def-regexp (rx bol (0+ (any space)) "def")
+  "Regular expression `python-mp-add-parameter' uses to match a function definition")
+
+(defconst python-mp-class-regexp (rx bol (0+ (any space)) "class")
+  "Regular expression `python-mp-extract-to' uses to match a class definition.")
 
 (defun python-mp-send-help ()
   "Sends a help(EXPR) command when called from an inferior python
@@ -257,8 +284,75 @@ it."
       (if bounds
           (delete-and-extract-region (car bounds) (cdr bounds))
         (error "Cannot find a valid expression"))))))
-  
-  
+
+(defun python-mp-extract-to (name place)
+  "Extracts the expression, string, or sexp using
+`python-mp-extract-dwim' to a variable NAME in PLACE.
+
+PLACE must be one of the following valid symbols: `class' for the
+class point is in; `def' to add it to the top of the def
+statement point is in; `block' to add it to the top of the block
+point is in."
+  (save-excursion
+    (unless name (error "Must have a valid name"))
+    (setq oldpt (point))
+    (catch 'done
+      (while
+          (progn
+            ;; blocks use `python-beginning-of-block'
+            (if (eq place 'block)
+                (python-beginning-of-block)
+              (python-beginning-of-defun))
+            ;; keep going back to the previous def or class until we
+            ;; encounter the statement we're looking for. If we're
+            ;; looking for a block we simply proceed without
+            ;; checking at all.
+            (when (or (looking-at
+                       (if (eq place 'class)
+                           python-mp-class-regexp
+                         python-mp-def-regexp))
+                      (eq place 'block))
+              ;; we must do this here as we're manipulating the
+              ;; buffer later on and that will throw off `oldpt'.
+              (setq full-expr
+                    (concat name " = "
+                            (save-excursion
+                              (goto-char oldpt)
+                              (python-mp-extract-dwim))))
+              ;; FIXME: this assumes that `end-of-line' is "end of
+              ;; block"; it might not be?
+              (end-of-line)
+              (newline-and-indent)
+              ;; stick the new expression into the buffer...
+              (insert full-expr)
+              ;; ... and signal the catch statement that we're done.
+              (throw 'done nil))
+            ;; loop condition here means we stop looking if we hit
+            ;; 0'th indentation level as that's as far back as we
+            ;; can go without jumping to earlier, unrelated,
+            ;; statements.
+            (> (python-mp-indentation-at-point (point)) 0)))
+      (message "No statement found."))
+    (message (concat (symbol-name place) " --> " (python-initial-text)))))
+
+(defun python-mp-extract-to-block (name)
+  "Extracts the expression, string, or sexp at point to the
+nearest `block' statement."
+  (interactive "sName: ")
+  (python-mp-extract-to name 'block))
+
+(defun python-mp-extract-to-class (name)
+  "Extracts the expression, string, or sexp at point to the
+nearest `class' statement."
+  (interactive "sName: ")
+  (python-mp-extract-to name 'class))
+
+(defun python-mp-extract-to-def (name)
+  "Extracts the expression, string, or sexp at point to the
+nearest `def' statement."
+  (interactive "sName: ")
+  (python-mp-extract-to name 'def))
+
 
 
 (defun python-mp-send-func (func arg)
@@ -279,9 +373,6 @@ sends it without interrupting user input"
       (if (> (count-lines (point) (window-end)) 1)
           (goto-char (point-max)))
       (error "No process found"))))
-
-(defconst python-mp-def-regexp (rx bol (0+ (any space)) "def")
-  "Regular expression `python-mp-add-parameter' uses to match a function definition")
 
 (defun python-mp-add-parameter (param)
   "Appends a parameter to the Python function point belongs to.
