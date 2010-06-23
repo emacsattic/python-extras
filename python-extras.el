@@ -486,6 +486,19 @@ depth in that block if SUBR is `'smart'. "
   ;;; Code loosely based off code snarfed from Andreas Politz on
   ;;; `gnu.emacs.help'.
   (progn
+    ;; if there's no region active we should act on the entire line
+    ;; instead. That avoids the uncomfortable situation where mark is
+    ;; *somewhere* in the buffer and shifting the region would move
+    ;; the region from point to mark.
+    (unless (region-active-p)
+      (set-mark
+       (save-excursion
+         (forward-line 0)
+         (point)))
+      (end-of-line)
+      ;; we must have this or we won't include the newline.
+      (forward-char)
+      (activate-mark))
     (if (> (point) (mark))
         (exchange-point-and-mark))
     (let ((column (current-column))
@@ -503,12 +516,12 @@ depth in that block if SUBR is `'smart'. "
       (if (eq subr 'smart)
           (progn
             (indent-rigidly (point) (mark)
-                            ;;; the inner-most block indentation level
-                            ;;; is what we're after. Subtract the
-                            ;;; current indentation at point (the
-                            ;;; top-most line in the region) from it
-                            ;;; to get the amount we need to rigidly
-                            ;;; indent by.
+                            ;; the inner-most block indentation level
+                            ;; is what we're after. Subtract the
+                            ;; current indentation at point (the
+                            ;; top-most line in the region) from it
+                            ;; to get the amount we need to rigidly
+                            ;; indent by.
                             (- (caar (last (python-indentation-levels)))
                                (python-mp-indentation-at-point (point))))))
       (setq deactivate-mark nil))))
