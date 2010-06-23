@@ -77,7 +77,7 @@
 ;;;; Refactor
 ;;
 ;; C-c C-p - Calls `python-mp-add-parameter' which will prompt you for
-;; a parameter to add to the function point is currently in. If you
+;; a parameter to add to the function point is currently in.  If you
 ;; are not in a function body an error is raised.
 ;;
 ;;
@@ -96,12 +96,12 @@
 ;;
 ;;; Inferior Python
 ;;
-;; C-c C-d - Invokes `python-mp-send-dir'. Sends a dir(EXPR) command
-;; where EXPR is the expression at point. It will preserve your
+;; C-c C-d - Invokes `python-mp-send-dir'.  Sends a dir(EXPR) command
+;; where EXPR is the expression at point.  It will preserve your
 ;; current input.
 ;;
-;; C-d C-h - Invokes `python-mp-send-help'. Sends a help(EXPR) command
-;; where EXPR is the expressio nat point. It will also preserve your
+;; C-d C-h - Invokes `python-mp-send-help'.  Sends a help(EXPR) command
+;; where EXPR is the expressio nat point.  It will also preserve your
 ;; current input.
 ;;
 ;; Highlighting - Strings are now highlighted using a special "safety"
@@ -197,10 +197,12 @@
 (define-key inferior-python-mode-map (kbd "C-c C-d") 'python-mp-send-dir)
 
 (defconst python-mp-def-regexp (rx bol (0+ (any space)) "def")
-  "Regular expression `python-mp-add-parameter' uses to match a function definition")
+  "Regular expression `python-mp-add-parameter' uses to match a
+  function definition.")
 
 (defconst python-mp-class-regexp (rx bol (0+ (any space)) "class")
-  "Regular expression `python-mp-extract-to' uses to match a class definition.")
+  "Regular expression `python-mp-extract-to' uses to match a
+  class definition.")
 
 (defun python-mp-send-help ()
   "Sends a help(EXPR) command when called from an inferior python
@@ -353,8 +355,6 @@ nearest `def' statement."
   (interactive "sName: ")
   (python-mp-extract-to name 'def))
 
-
-
 (defun python-mp-send-func (func arg)
   "Constructs a FUNC(ARG) request to an inferior-python process and
 sends it without interrupting user input"
@@ -369,9 +369,8 @@ sends it without interrupting user input"
           ;; last line and thus we shouldn't move the point to the
           ;; very end, as the user invoked the command on
           ;; a line they're still editing.
-          )
-      (if (> (count-lines (point) (window-end)) 1)
-          (goto-char (point-max)))
+          (if (> (count-lines (point) (window-end)) 1)
+              (goto-char (point-max))))
       (error "No process found"))))
 
 (defun python-mp-add-parameter (param)
