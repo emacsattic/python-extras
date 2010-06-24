@@ -7,8 +7,6 @@
 ;; Copyright (C) 2010, Mickey Petersen, all rights reserved.
 ;; Created: 2010-05-22 21:21:04
 ;; Version: 0.2
-;; Last-Updated: 2010-05-22 21:21:04
-;;           By: Mickey Petersen
 ;; Keywords: python utility refactor extras
 ;; Compatibility: GNU Emacs 23
 ;;
@@ -119,8 +117,13 @@
 ;;
 
 ;;; Change log:
+;; 2010/06/23
+;;      * Added experimental replacement for python's default
+;;        indentation function. The new function will automatically
+;;        (but naïvely) reindent code blocks.
 ;;
-;;
+;; 2010/06/18
+;;      * Added extract to def/block/class
 ;;
 ;; 2010/06/06
 ;;      * Added `python-mp-shift-region-up/down'. Regions can
@@ -167,6 +170,7 @@
 (require 'comint)
 (require 'python)
 (require 'thingatpt)
+(require 'skeleton)
 
 ;;; Code:
 
@@ -188,10 +192,10 @@
 ;; (define-key python-mode-map ?\" 'python-mp-smart-quote)
 ;; (define-key python-mode-map ?\' 'python-mp-smart-quote)
 
-;; region shifting
+;; region shifting and indentation modifications
 (define-key python-mode-map (kbd "C-S-<up>") 'python-mp-shift-region-up)
 (define-key python-mode-map (kbd "C-S-<down>") 'python-mp-shift-region-down)
-
+(define-key python-mode-map (kbd "<tab>") 'python-mp-reindent)
 ;;; Keymaps for inferior python
 (define-key inferior-python-mode-map (kbd "C-c C-h") 'python-mp-send-help)
 (define-key inferior-python-mode-map (kbd "C-c C-d") 'python-mp-send-dir)
@@ -447,7 +451,6 @@ inferior python buffer."
   (error "NYI")
   )
 
-
 (defun python-mp-indentation-at-point (pt)
   "Determines the indentation at PT. This approach does not use
 \\[python-mode]'s internal data structures as we're not
@@ -478,6 +481,24 @@ satisfied."
             (forward-line -1)
             (python-mp-indentation-at-point (point)))
         indent-count))))
+
+
+;;FIXME: this is a bit hacky...
+(defun python-mp-reindent ()
+  "Reindents the active region if \\[transient-mark-mode] is on."
+  (interactive)
+  (if (region-active-p)
+      ;; shift the region by 0 lines which means it'll stay where it
+      ;; is but reindent.
+      (progn
+        (python-mp-shift-region 0 'smart)
+        (deactivate-mark))
+    ;; there is a special place in hell reserved for people who alter
+    ;; `this-command' and `last-command'.
+    (let ((this-command 'indent-for-tab-command)
+          (last-command 'indent-for-tab-command))
+      ;; default to the usual python-mode indentation function.
+      (indent-for-tab-command))))
 
 (defun python-mp-shift-region (arg subr)
   "Shifts the active region ARG times up (backward if ARG is
