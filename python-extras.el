@@ -163,6 +163,12 @@
 ;; I also need to add defcustom support; there's not a whole lot to
 ;; customize at this point but that's bound to change.
 ;;
+;; Incorporate `Info-mode' help generation using
+;; `comint-redirect-send-command-to-process'.
+;;
+;; Completion support with rlcompleter2
+;;
+;;
 
 ;;; Require
 
@@ -196,6 +202,7 @@
 (define-key python-mode-map (kbd "C-S-<up>") 'python-mp-shift-region-up)
 (define-key python-mode-map (kbd "C-S-<down>") 'python-mp-shift-region-down)
 (define-key python-mode-map (kbd "<tab>") 'python-mp-reindent)
+
 ;;; Keymaps for inferior python
 (define-key inferior-python-mode-map (kbd "C-c C-h") 'python-mp-send-help)
 (define-key inferior-python-mode-map (kbd "C-c C-d") 'python-mp-send-dir)
