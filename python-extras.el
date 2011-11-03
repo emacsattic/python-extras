@@ -201,7 +201,7 @@
 ;; region shifting and indentation modifications
 (define-key python-mode-map (kbd "C-S-<up>") 'python-mp-shift-region-up)
 (define-key python-mode-map (kbd "C-S-<down>") 'python-mp-shift-region-down)
-(define-key python-mode-map (kbd "<tab>") 'python-mp-reindent)
+;;(define-key python-mode-map (kbd "<tab>") 'python-mp-reindent)
 
 ;;; Keymaps for inferior python
 (define-key inferior-python-mode-map (kbd "C-c C-h") 'python-mp-send-help)
