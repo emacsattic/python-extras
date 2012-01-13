@@ -346,7 +346,9 @@ point is in."
             ;; statements.
             (> (python-mp-indentation-at-point (point)) 0)))
       (message "No statement found."))
-    (message (concat (symbol-name place) " --> " (python-initial-text)))))
+    (message (concat (symbol-name place) " --> " (python-initial-text)))
+    )
+  (insert name))
 
 (defun python-mp-extract-to-block (name)
   "Extracts the expression, string, or sexp at point to the
