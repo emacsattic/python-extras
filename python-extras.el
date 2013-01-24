@@ -206,6 +206,7 @@
 ;;; Keymaps for inferior python
 (define-key inferior-python-mode-map (kbd "C-c C-h") 'python-mp-send-help)
 (define-key inferior-python-mode-map (kbd "C-c C-d") 'python-mp-send-dir)
+(define-key inferior-python-mode-map (kbd "C-c C-i") 'python-mp-send-mro)
 
 (defconst python-mp-def-regexp (rx bol (0+ (any space)) "def")
   "Regular expression `python-mp-add-parameter' uses to match a
@@ -226,6 +227,18 @@ buffer, where EXPR is an expression at Point."
 buffer, where EXPR is an expression at Point."
   (interactive (if (eq major-mode 'inferior-python-mode)
                    (python-mp-compile-comint-query "dir" (python-mp-get-expression-at-pt)))))
+
+(defun python-mp-send-mro ()
+  "Queries the Python shell for the MRO (Method Resolution Order)
+  information for the object on point."
+  (interactive (if (eq major-mode 'inferior-python-mode)
+                   (python-mp-send-arg
+                    (concat "for ex in reversed(" (python-mp-get-expression-at-pt)
+                            ".__mro__): print '{0:<15} {1:<10} ({2})'.format(ex.__name__, ex, ex.__doc__)\n\n")))))
+
+(defun python-mp--build-py-func (func arg)
+  "Internal function that builds a function call, FUNC, with ARG."
+  )
 
 (defun python-mp-get-expression-at-pt ()
   "Takes the word at point using a modified syntax table and
@@ -248,10 +261,8 @@ using `python-mp-call-func-on-word'"
   ;(interactive "sFunc: \nsQuery: ")
   ;; this should only work in `inferior-python-mode'
   (if (and (eq major-mode 'inferior-python-mode)
-           arg
-           (stringp func)
-           (stringp arg))
-      (python-mp-send-func func arg)
+           arg (stringp func) (stringp arg))
+      (python-mp-send-arg (concat func "(" arg ")" "\n"))
     (error "Failed to send query")))
 
 (defconst python-mp-from-statement-regexp "")
@@ -346,8 +357,7 @@ point is in."
             ;; statements.
             (> (python-mp-indentation-at-point (point)) 0)))
       (message "No statement found."))
-    (message (concat (symbol-name place) " --> " (python-initial-text)))
-    )
+    (message (concat (symbol-name place) " --> " (python-initial-text))))
   (insert name))
 
 (defun python-mp-extract-to-block (name)
@@ -368,7 +378,7 @@ nearest `def' statement."
   (interactive "sName: ")
   (python-mp-extract-to name 'def))
 
-(defun python-mp-send-func (func arg)
+(defun python-mp-send-arg (arg)
   "Constructs a FUNC(ARG) request to an inferior-python process and
 sends it without interrupting user input"
   (let ((proc (get-buffer-process (current-buffer))))
@@ -376,7 +386,7 @@ sends it without interrupting user input"
         (progn
           ;; construct a query for `python-shell' of the form 'func(arg)'.
           ;; FIXME: better way?
-          (comint-send-string proc (concat func "(" arg ")" "\n"))
+          (comint-send-string proc arg)
           ;; count the number of lines left between `point' and
           ;; `window-end'. If it this number is 0 or 1 we're at the
           ;; last line and thus we shouldn't move the point to the
@@ -436,6 +446,27 @@ If called from within a class -- but outside a method body -- an error is raised
       ;; only get the line we added our own parameter to. I guess
       ;; that's OK?
       (message (python-initial-text)))))
+
+
+;;; HACK: Fix broken python-proc in python.el
+;; (defun python-proc ()
+;;   "Return the current Python process.
+;; See variable `python-buffer'.  Starts a new process if necessary."
+;;   ;; Fixme: Maybe should look for another active process if there
+;;   ;; isn't one for `python-buffer'.
+;;   (unless (comint-check-proc python-buffer)
+;;     (run-python nil t))
+;;   ;; update ALL python-mode processes to use this one IF AND ONLY IF
+;;   ;; they have a dead process buffer in their `python-buffer' variable
+;;   (let ((py-proc (get-buffer-process
+;;                   (if (derived-mode-p 'inferior-python-mode)
+;;                       (current-buffer)
+;;                     python-buffer))))
+;;     (dolist (buf (buffer-list))
+;;       (with-current-buffer buf
+;;         (if (and (derived-mode-p 'python-mode) (not (buffer-live-p python-buffer)))
+;;             (setq python-buffer (get-buffer-process py-proc)))))
+;;     py-proc))
 
 ; Sends the contents of the buffer then switches to the python buffer.
 (defun python-mp-send-and-switch ()
