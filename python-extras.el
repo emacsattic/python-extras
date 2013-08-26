@@ -201,6 +201,9 @@
 ;; region shifting and indentation modifications
 (define-key python-mode-map (kbd "C-S-<up>") 'python-mp-shift-region-up)
 (define-key python-mode-map (kbd "C-S-<down>") 'python-mp-shift-region-down)
+
+(define-key python-mode-map (kbd "C-<") 'python-mp-indent-left)
+(define-key python-mode-map (kbd "C->") 'python-mp-indent-right)
 ;;(define-key python-mode-map (kbd "<tab>") 'python-mp-reindent)
 
 ;;; Keymaps for inferior python
@@ -555,6 +558,29 @@ depth in that block if SUBR is `'smart'. "
                             (- (caar (last (python-indentation-levels)))
                                (python-mp-indentation-at-point (point))))))
       (setq deactivate-mark nil))))
+
+(defun python-mp-force-indent (amount)
+  "Forcibly indents/unindents a region by AMOUNT"
+  (interactive "*p")
+  (save-excursion
+    (when (> (point) (mark))
+     (exchange-point-and-mark))
+   (indent-rigidly (point) (mark) amount)
+   (setq deactivate-mark nil)))
+
+(defun python-mp-indent-left (arg)
+  "Indents the region to the left ARG times
+
+By default, ARG is 1, so the indentation amount is `python-indent'"
+  (interactive "*p")
+  (python-mp-force-indent (* (- 0 python-indent) arg)))
+
+(defun python-mp-indent-right (arg)
+  "Indents the region to the right ARG times
+
+By default, ARG is 1, so the indentation amount is `python-indent'"
+  (interactive "*p")
+  (python-mp-force-indent (* python-indent arg)))
 
 (defun python-mp-shift-region-down (arg)
   "If the region is active and \\[transient-mark-mode] is enabled
