@@ -571,10 +571,14 @@ depth in that block if SUBR is `'smart'. "
       ;; region and then immediately `undo'. This needs to be
       ;; fixed. The workaround is to do something to add to the
       ;; undo-ring (like movement) then it'll work fine.
-      (forward-line arg)
-      (move-to-column column t)
-      (set-mark (point))
-      (insert text)
+      (unwind-protect
+          (progn
+            (buffer-disable-undo)
+            (forward-line arg)
+            (move-to-column column t)
+            (set-mark (point))
+            (insert text))
+        (buffer-enable-undo))
       ;; without this point would be at the end of the region
       (exchange-point-and-mark)
       (if (eq subr 'smart)
